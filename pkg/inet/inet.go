@@ -125,7 +125,7 @@ func init() {
 }
 
 func bigEndian() (ret bool) {
-	var i int = 0x1
+	var i = 0x1
 	bs := (*[int(unsafe.Sizeof(0))]byte)(unsafe.Pointer(&i))
 	return bs[0] == 0
 

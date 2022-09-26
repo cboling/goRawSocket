@@ -187,20 +187,13 @@ func NewFrame(data []byte) Frame {
 	return data
 }
 
-func (f *Frame) String(l uint16, indent int) string {
-	s := fmt.Sprintf(padLeft("Mac Len    : %d\n", "\t", indent), l) +
-		fmt.Sprintf(padLeft("MAC Source : %s\n", "\t", indent), f.MACSource()) +
-		fmt.Sprintf(padLeft("MAC Dest   : %s\n", "\t", indent), f.MACDestination())
+func (f *Frame) String(length uint32, indent int) string {
+	s := fmt.Sprintf("Len: %-4d, %s/%s", length, f.MACDestination(), f.MACSource())
 	mT := f.VLANTag()
 	if mT == Tagged {
-		s += fmt.Sprint(padLeft("VLAN Info  : \n", "\t", indent))
-		s += fmt.Sprintf(padLeft("TPID       : 0x%04x\n", "\t", indent), f.VLANTPID())
-		s += fmt.Sprintf(padLeft("PCP        : %d\n", "\t", indent), f.VLANPCP())
-		s += fmt.Sprintf(padLeft("DEI        : %v\n", "\t", indent), f.VLANDEI())
-		s += fmt.Sprintf(padLeft("ID         : 0x%03x (%d)\n", "\t", indent), f.VLANID(), f.VLANID())
+		s += fmt.Sprintf(" (0x%04x/0x%03x-%d)", f.VLANTPID(), f.VLANID(), f.VLANID())
 	}
-	macType := f.MACEthertype(mT)
-	s += fmt.Sprintf(padLeft("MAC Type   : %s\n", "\t", indent), macType) //+ f.GetPayString(l, indent, mT)
+	s += fmt.Sprintf(", EthType : %s\n", f.MACEthertype(mT))
 	return s
 }
 

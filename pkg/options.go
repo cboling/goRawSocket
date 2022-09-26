@@ -16,8 +16,6 @@
 
 package rawsocket
 
-import "github.com/cboling/goRawSocket/pkg/nettypes"
-
 type RawSocketOption func(*RawSocket)
 
 func Domain(domain int) RawSocketOption {
@@ -26,7 +24,7 @@ func Domain(domain int) RawSocketOption {
 	}
 }
 
-func Protocol(proto nettypes.EthType) RawSocketOption {
+func Protocol(proto uint16) RawSocketOption {
 	return func(args *RawSocket) {
 		args.proto = proto
 	}

@@ -41,10 +41,13 @@ func main() {
 
 		if err = sock.Open(); err == nil {
 			//defer sock.Close()
+			frameNumber := 0
 
-			sock.Listen(func(frame nettypes.Frame, frameLen, capturedLen uint16) nettypes.Frame {
+			sock.Listen(func(frame nettypes.Frame, frameLen uint32, capturedLen uint32) nettypes.Frame {
 				mT := frame.VLANTag()
 				if mT == nettypes.Tagged || true {
+					frameNumber += 1
+					fmt.Printf("Frame #: %6d: ", frameNumber)
 					fmt.Printf(frame.String(capturedLen, 0))
 				}
 				return frame

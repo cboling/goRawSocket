@@ -18,7 +18,6 @@ package rawsocket
 
 import (
 	"fmt"
-	"github.com/cboling/goRawSocket/pkg/inet"
 	"github.com/cboling/goRawSocket/pkg/nettypes"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
@@ -62,30 +61,11 @@ const (
 	pollErr = 0x08
 )
 
-func errnoErr(e syscall.Errno) error {
-	switch e {
-	case 0:
-		return nil
-	case syscall.EAGAIN:
-		return fmt.Errorf("try again")
-	case syscall.EINVAL:
-		return fmt.Errorf("invalid argument")
-	case syscall.ENOENT:
-		return fmt.Errorf("no such file or directory")
-	}
-	return e
-}
-
-func copyFx(dst, src []byte, len uint16) uint16 {
-	copy(dst, src)
-	return len
-}
-
 type RawSocket struct {
 	netInterface string
 	domain       int
 	sockType     int
-	proto        nettypes.EthType
+	proto        uint16
 	fd           int
 	bpfString    string
 	bpf          []pcap.BPFInstruction
@@ -120,7 +100,7 @@ func NewRawSocket(intf string, opts ...RawSocketOption) (*RawSocket, error) {
 		fd:           invalidFd,
 		domain:       syscall.AF_PACKET,
 		sockType:     syscall.SOCK_RAW,
-		proto:        nettypes.All,
+		proto:        syscall.ETH_P_ALL,
 		frameSize:    2048,
 		maxFrames:    128,
 		rxEnabled:    true,
@@ -158,10 +138,7 @@ func (sock *RawSocket) Open() error {
 	if sock.fd != invalidFd {
 		return nil
 	}
-	//ethType := binary.BigEndian.Uint16(sock.proto[0:])
-	ethType := inet.HToNS(sock.proto[0:])
-	//ethType := syscall.ETH_P_ALL
-	fd, err := syscall.Socket(sock.domain, sock.sockType, int(ethType))
+	fd, err := syscall.Socket(sock.domain, sock.sockType, int(Htons(sock.proto)))
 	if err == nil {
 		//if sock.vlanEnable {
 		//	if err = syscall.SetsockoptInt(fd, syscall.SOL_PACKET, PACKET_AUXDATA, 1); err != nil {
@@ -196,13 +173,7 @@ func (sock *RawSocket) Open() error {
 		pageSize := uint(os.Getpagesize())
 		var frameSize uint
 		if uint(sock.frameSize) < pageSize {
-			sz := uint(MinimumFrameSize)
-			if sz != frameSize {
-				for sz < frameSize {
-					sz <<= 1
-				}
-				frameSize = sz >> 1
-			}
+			frameSize = calculateLargestFrame(uint(sock.frameSize))
 		} else {
 			frameSize = (uint(sock.frameSize) / pageSize) * pageSize
 		}
@@ -318,7 +289,7 @@ func (sock *RawSocket) WrittenPackets() int32 {
 }
 
 // Listen to all specified packets in the RX ring-buffer
-func (sock *RawSocket) Listen(filter func(nettypes.Frame, uint16, uint16) nettypes.Frame) error {
+func (sock *RawSocket) Listen(filter func(nettypes.Frame, uint32, uint32) nettypes.Frame) error {
 	if !sock.rxEnabled {
 		return fmt.Errorf("the RX ring is disabled on this socket")
 	}
@@ -332,18 +303,10 @@ func (sock *RawSocket) Listen(filter func(nettypes.Frame, uint16, uint16) nettyp
 	pfdP := uintptr(pfd.getPointer())
 	rxIndex := int32(0)
 	rf := sock.rxFrames[rxIndex]
-	pollTimeout := -1
+	pollTimeout := 5
 	pTOPointer := uintptr(unsafe.Pointer(&pollTimeout))
 	for {
 		for ; rf.rxReady(); rf = sock.rxFrames[rxIndex] {
-			//start := rf.macStart()
-			//frame := nettypes.Frame(rf.raw[start:])
-			//tpLen := rf.tpLen()
-			//tpSnapLen := rf.tpSnapLen()
-			//if frame[12] == 0xa8 {
-			//	rf.RxFrame(sock.vlanEnable)
-			//}
-			//fx(&f, rf.tpLen(), rf.tpSnapLen())
 			frame, tpLen, tpSnapLen := rf.RxFrame(sock.vlanEnable)
 
 			// Send to listeners that may need to modify or validate the frame (decrypt, ...)
@@ -393,8 +356,8 @@ func (sock *RawSocket) CopyToBuffer(buf []byte, l uint16, copyFx func(dst, src [
 		return -1, err
 	}
 	cL := copyFx(tx.txStart, buf, l)
-	tx.setTpLen(cL)
-	tx.setTpSnapLen(cL)
+	tx.setTpLen(uint32(cL))
+	tx.setTpSnapLen(uint32(cL))
 	written := atomic.AddInt32(&sock.txWritten, 1)
 	if written == 1 {
 		atomic.SwapInt32(&sock.txWrittenIndex, txIndex)
@@ -469,10 +432,4 @@ func (sock *RawSocket) getFreeTx() (*ringFrame, int32, error) {
 		runtime.Gosched()
 	}
 	return tx, txIndex, nil
-}
-
-type txIndexError int32
-
-func (ie txIndexError) Error() string {
-	return fmt.Sprintf("bad format in tx frame %d", ie)
 }

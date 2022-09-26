@@ -23,10 +23,6 @@ import (
 	"sync/atomic"
 )
 
-func PacketOffset() int {
-	return txStart
-}
-
 type ringFrame struct {
 	raw     []byte
 	txStart []byte
@@ -34,7 +30,7 @@ type ringFrame struct {
 	tpHdr   *TPacket2Hdr
 }
 
-func (rf *ringFrame) RxFrame(vlanEnabled bool) (nettypes.Frame, uint16, uint16) {
+func (rf *ringFrame) RxFrame(vlanEnabled bool) (nettypes.Frame, uint32, uint32) {
 	start := int(rf.macStart())
 
 	vlanPresent := vlanEnabled && rf.vlan_valid()
@@ -56,74 +52,68 @@ func (rf *ringFrame) RxFrame(vlanEnabled bool) (nettypes.Frame, uint16, uint16) 
 		frame := nettypes.NewFrame(buf)
 		return frame, newLength, newLength
 	}
-	frame := nettypes.NewFrame(rf.raw[start:])
-	// fmt.Printf(frame.String(rf.tpSnapLen(), 0))
+	buf := make([]byte, rf.tpSnapLen())
+	copy(buf, rf.raw[start:])
+	frame := nettypes.NewFrame(buf)
 	return frame, rf.tpLen(), rf.tpSnapLen()
 }
 
 func (rf *ringFrame) macStart() uint16 {
-	// TODO: Get rid of inet subdir
-	return binary.LittleEndian.Uint16(rf.raw[tpMacStart:tpMacStop])
-	//y := inet.Short(rf.raw[tpMacStart:tpMacStop])
-	//if x == y {
-	//	return y
-	//}
-	//return x
-	//return inet.Short(rf.raw[tpMacStart:tpMacStop])
+	return rf.tpHdr.TpMac
 }
 
-func (rf *ringFrame) tpLen() uint16 {
-	return uint16(binary.LittleEndian.Uint32(rf.raw[tpLenStart:tpLenStop]))
-	//return uint16(inet.Int(rf.raw[tpLenStart:tpLenStop]))
+func (rf *ringFrame) tpLen() uint32 {
+	return rf.tpHdr.TpLen
 }
 
-func (rf *ringFrame) setTpLen(v uint16) {
-	binary.LittleEndian.PutUint32(rf.raw[tpLenStart:tpLenStop], uint32(v))
-	//inet.PutInt(rf.raw[tpLenStart:tpLenStop], uint32(v))
+func (rf *ringFrame) setTpLen(value uint32) {
+	rf.tpHdr.TpLen = value
 }
 
-func (rf *ringFrame) tpSnapLen() uint16 {
-	return uint16(binary.LittleEndian.Uint32(rf.raw[tpSnapLenStart:tpSnapLenStop]))
+func (rf *ringFrame) tpSnapLen() uint32 {
+	return rf.tpHdr.TpSnapLen
 }
 
-func (rf *ringFrame) setTpSnapLen(v uint16) {
-	// TODO: Get rid of inet subdir
-	binary.LittleEndian.PutUint32(rf.raw[tpSnapLenStart:tpSnapLenStop], uint32(v))
+func (rf *ringFrame) setTpSnapLen(value uint32) {
+	rf.tpHdr.TpSnapLen = value
 }
 
 func (rf *ringFrame) tpVlanTci() uint16 {
-	return binary.LittleEndian.Uint16(rf.raw[tpTciStart:tpTciStop])
+	return rf.tpHdr.TpVlanTci
 }
 
 func (rf *ringFrame) tpVlanTpid() uint16 {
-	return binary.LittleEndian.Uint16(rf.raw[tpTpidStart:tpTpidStop])
+	return rf.tpHdr.TpVlanTpid
 }
 
 func (rf *ringFrame) vlan_valid() bool {
-	return binary.LittleEndian.Uint32(rf.raw[0:HOST_INT_SIZE])&tpStatusVlanValid == tpStatusVlanValid
+	return rf.tpHdr.vlanValid()
 }
 
 func (rf *ringFrame) tpid_valid() bool {
-	return binary.LittleEndian.Uint32(rf.raw[0:HOST_INT_SIZE])&tpStatusVlanTpidValid == tpStatusVlanTpidValid
+	return rf.tpHdr.tpidValid()
 }
 
 func (rf *ringFrame) rxReady() bool {
-	oldRxReady := binary.LittleEndian.Uint32(rf.raw[0:HOST_INT_SIZE])&tpStatusUser == tpStatusUser && atomic.CompareAndSwapUint32(&rf.mb, 0, 1)
-	return oldRxReady
+	if rf.tpHdr.rxReady() && rf.mb == 1 {
+		fmt.Println("Ready but memory block already set")
+	}
+	return rf.tpHdr.rxReady() && atomic.CompareAndSwapUint32(&rf.mb, 0, 1)
 }
 
 func (rf *ringFrame) rxSet() {
-	binary.LittleEndian.PutUint32(rf.raw[0:HOST_INT_SIZE], uint32(tpStatusKernel))
-	// this acts as a memory barrier
-	atomic.StoreUint32(&rf.mb, 0)
+	rf.tpHdr.TpLen = 0
+	rf.tpHdr.TpSnapLen = 0
+	rf.tpHdr.TpStatus = tpStatusKernel
+	atomic.StoreUint32(&rf.mb, 0) // this acts as a memory barrier
 }
 
 func (rf *ringFrame) txWrongFormat() bool {
-	return binary.LittleEndian.Uint32(rf.raw[0:HOST_INT_SIZE])&tpStatusWrongFormat == tpStatusWrongFormat
+	return rf.tpHdr.txWrongFormat()
 }
 
 func (rf *ringFrame) txReady() bool {
-	return binary.LittleEndian.Uint32(rf.raw[0:HOST_INT_SIZE])&(tpStatusSendRequest|tpStatusSending) == 0
+	return rf.tpHdr.txReady()
 }
 
 func (rf *ringFrame) txMBReady() bool {
@@ -131,7 +121,7 @@ func (rf *ringFrame) txMBReady() bool {
 }
 
 func (rf *ringFrame) txSet() {
-	binary.LittleEndian.PutUint32(rf.raw[0:HOST_INT_SIZE], uint32(tpStatusSendRequest))
+	rf.tpHdr.txSet()
 }
 
 func (rf *ringFrame) txSetMB() {
@@ -139,7 +129,7 @@ func (rf *ringFrame) txSetMB() {
 }
 
 func (rf *ringFrame) printRxStatus() {
-	s := binary.LittleEndian.Uint32(rf.raw[0:HOST_INT_SIZE])
+	s := rf.tpHdr.TpStatus
 	fmt.Printf("RX STATUS :")
 	if s == 0 {
 		fmt.Printf(" Kernel")
@@ -176,7 +166,7 @@ func (rf *ringFrame) printRxStatus() {
 }
 
 func (rf *ringFrame) printTxStatus() {
-	s := binary.LittleEndian.Uint32(rf.raw[0:HOST_INT_SIZE])
+	s := rf.tpHdr.TpStatus
 	fmt.Printf("TX STATUS :")
 	if s == 0 {
 		fmt.Printf(" Available")

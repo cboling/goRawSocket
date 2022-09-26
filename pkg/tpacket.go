@@ -20,7 +20,6 @@
 package rawsocket
 
 import (
-	"sync/atomic"
 	"unsafe"
 )
 
@@ -54,59 +53,6 @@ const (
 	tpStatusTSRawHardware = 1 << 31
 )
 
-var (
-	tpLenStart     int
-	tpLenStop      int
-	tpSnapLenStart int
-	tpSnapLenStop  int
-	tpMacStart     int
-	tpMacStop      int
-	tpNetStart     int
-	tpNetStop      int
-	tpSecStart     int
-	tpSecStop      int
-	tpNSecStart    int
-	tpNSecStop     int
-	tpTciStart     int
-	tpTciStop      int
-	tpTpidStart    int
-	tpTpidStop     int
-
-	txStart int
-)
-
-func init() {
-	tpLenStart = HOST_INT_SIZE
-	tpLenStop = tpLenStart + HOST_INT_SIZE
-
-	tpSnapLenStart = tpLenStop
-	tpSnapLenStop = tpSnapLenStart + HOST_INT_SIZE
-
-	tpMacStart = tpSnapLenStop
-	tpMacStop = tpMacStart + HOST_SHORT_SIZE
-
-	tpNetStart = tpMacStop
-	tpNetStop = tpNetStart + HOST_SHORT_SIZE
-
-	tpSecStart = tpNetStop
-	tpSecStop = tpSecStart + HOST_INT_SIZE
-
-	tpNSecStart = tpSecStop
-	tpNSecStop = tpNSecStart + HOST_INT_SIZE
-
-	tpTciStart = tpNSecStop
-	tpTciStop = tpTciStart + HOST_SHORT_SIZE
-
-	tpTpidStart = tpTciStop
-	tpTpidStop = tpTpidStart + HOST_SHORT_SIZE
-
-	txStart = tpTpidStop + (4 * HOST_BYTE_SIZE)
-	r := txStart % TPacketAlignment
-	if r > 0 {
-		txStart += TPacketAlignment - r
-	}
-}
-
 type TPacket2Hdr struct {
 	TpStatus   uint32
 	TpLen      uint32
@@ -125,6 +71,60 @@ type TPacket2Hdr struct {
 
 var sizeOfTPacket2Hdr = unsafe.Sizeof(TPacket2Hdr{})
 
+var (
+	//	tpLenStart     int
+	//	tpLenStop      int
+	//	tpSnapLenStart int
+	//	tpSnapLenStop  int
+	//	tpMacStart     int
+	//	tpMacStop      int
+	//	tpNetStart     int
+	//	tpNetStop      int
+	//	tpSecStart     int
+	//	tpSecStop      int
+	//	tpNSecStart    int
+	//	tpNSecStop     int
+	//	tpTciStart     int
+	//	tpTciStop      int
+	//	tpTpidStart    int
+	//	tpTpidStop     int
+	//
+	txStart int
+)
+
+func init() {
+	//	tpLenStart = HOST_INT_SIZE
+	//	tpLenStop = tpLenStart + HOST_INT_SIZE
+	//
+	//	tpSnapLenStart = tpLenStop
+	//	tpSnapLenStop = tpSnapLenStart + HOST_INT_SIZE
+	//
+	//	tpMacStart = tpSnapLenStop
+	//	tpMacStop = tpMacStart + HOST_SHORT_SIZE
+	//
+	//	tpNetStart = tpMacStop
+	//	tpNetStop = tpNetStart + HOST_SHORT_SIZE
+	//
+	//	tpSecStart = tpNetStop
+	//	tpSecStop = tpSecStart + HOST_INT_SIZE
+	//
+	//	tpNSecStart = tpSecStop
+	//	tpNSecStop = tpNSecStart + HOST_INT_SIZE
+	//
+	//	tpTciStart = tpNSecStop
+	//	tpTciStop = tpTciStart + HOST_SHORT_SIZE
+	//
+	//	tpTpidStart = tpTciStop
+	//	tpTpidStop = tpTpidStart + HOST_SHORT_SIZE
+	//
+	//	txStart = tpTpidStop + (4 * HOST_BYTE_SIZE)
+	txStart = int(sizeOfTPacket2Hdr)
+	r := txStart % TPacketAlignment
+	if r > 0 {
+		txStart += TPacketAlignment - r
+	}
+}
+
 func NewTPacket2Hdr(rawData []byte) *TPacket2Hdr { // unsafe.Pointer {
 	tpHdr := (*TPacket2Hdr)(unsafe.Pointer(&rawData[0]))
 	return tpHdr
@@ -138,13 +138,8 @@ func (hdr *TPacket2Hdr) tpidValid() bool {
 	return hdr.TpStatus&tpStatusVlanTpidValid == tpStatusVlanTpidValid
 }
 
-func (hdr *TPacket2Hdr) rxReady(rf *ringFrame) bool {
-	return hdr.TpStatus&tpStatusUser == tpStatusUser && atomic.CompareAndSwapUint32(&rf.mb, 0, 1)
-}
-
-func (hdr *TPacket2Hdr) rxSet(rf *ringFrame) {
-	hdr.TpStatus = uint32(tpStatusKernel)
-	atomic.StoreUint32(&rf.mb, 0) // this acts as a memory barrier
+func (hdr *TPacket2Hdr) rxReady() bool {
+	return hdr.TpStatus&tpStatusUser == tpStatusUser
 }
 
 func (hdr *TPacket2Hdr) txWrongFormat() bool {

@@ -62,9 +62,13 @@ func (ie txIndexError) Error() string {
 }
 
 func calculateLargestFrame(ceil uint) uint {
-	i := uint(MinimumFrameSize)
-	for i < ceil {
-		i <<= 1
+	//if ceil == MinimumFrameSize {
+	//	return ceil
+	//}
+	sz := uint(MinimumFrameSize)
+	for sz < ceil {
+		sz <<= 1
 	}
-	return i >> 1
+	//return sz >> 1
+	return sz
 }

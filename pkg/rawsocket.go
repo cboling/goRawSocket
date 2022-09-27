@@ -16,6 +16,7 @@
 
 package rawsocket
 
+import "C"
 import (
 	"fmt"
 	"github.com/cboling/goRawSocket/pkg/nettypes"
@@ -140,23 +141,22 @@ func (sock *RawSocket) Open() error {
 	}
 	fd, err := syscall.Socket(sock.domain, sock.sockType, int(Htons(sock.proto)))
 	if err == nil {
-		//if sock.vlanEnable {
-		//	if err = syscall.SetsockoptInt(fd, syscall.SOL_PACKET, PACKET_AUXDATA, 1); err != nil {
-		//		syscall.Close(fd)
-		//		return err
-		//	}
-		//}
 		if sock.bpf != nil {
-			if _, _, errno := syscall.Syscall6(syscall.SYS_SETSOCKOPT,
-				uintptr(fd), uintptr(syscall.SOL_SOCKET), uintptr(syscall.SO_ATTACH_FILTER),
-				//uintptr(unsafe.Pointer(&b[0])), uintptr(len(b)), 0); errno != 0 {
-				uintptr(unsafe.Pointer(&sock.bpf)), uintptr(len(sock.bpf)), 0); errno != 0 {
+			type SockFprog struct {
+				Len       uint16
+				Pad_cgo_0 [6]byte
+				Filter    *pcap.BPFInstruction
+			}
+			var program SockFprog
+			program.Len = uint16(len(sock.bpf))
+			program.Filter = (*pcap.BPFInstruction)(unsafe.Pointer(&sock.bpf[0]))
+
+			if _, _, errno := syscall.Syscall6(syscall.SYS_SETSOCKOPT, uintptr(fd),
+				uintptr(syscall.SOL_SOCKET), uintptr(syscall.SO_ATTACH_FILTER),
+				uintptr(unsafe.Pointer(&program)), uintptr(unsafe.Sizeof(program)), 0); errno != 0 {
+				println("Failed")
 				return errno
 			}
-			//if err = syscall.AttachLsf(fd, sock.bpf); err != nil {
-			//	syscall.Close(fd)
-			//	return err
-			//}
 		}
 		// Bind to the network interface
 		err = syscall.BindToDevice(fd, sock.netInterface)
@@ -205,10 +205,6 @@ func (sock *RawSocket) Open() error {
 		if sock.txEnabled && sock.rxEnabled {
 			size *= 2
 		}
-		// Set any BPF
-		if len(sock.bpf) > 0 {
-			print("TODO: Implement me") // TODO: Implement
-		}
 		if sock.raw == nil {
 			// Note: Kernel maps the RxRing first (if enabled) followed by the TxRing
 			//       if enabled for this MMAP
@@ -231,8 +227,9 @@ func (sock *RawSocket) Open() error {
 				frameStart = i * int(sock.frameSize)
 				data := sock.raw[frameStart : frameStart+int(sock.frameSize)]
 				rxFrame := &ringFrame{
-					raw:   data,
-					tpHdr: NewTPacket2Hdr(data),
+					raw:      data,
+					tpHdr:    NewTPacket2Hdr(data),
+					sockAddr: NewSockAddr(data[txStart:]),
 				}
 				sock.rxFrames = append(sock.rxFrames, rxFrame)
 			}
@@ -303,7 +300,7 @@ func (sock *RawSocket) Listen(filter func(nettypes.Frame, uint32, uint32) nettyp
 	pfdP := uintptr(pfd.getPointer())
 	rxIndex := int32(0)
 	rf := sock.rxFrames[rxIndex]
-	pollTimeout := 5
+	pollTimeout := -1
 	pTOPointer := uintptr(unsafe.Pointer(&pollTimeout))
 	for {
 		for ; rf.rxReady(); rf = sock.rxFrames[rxIndex] {
@@ -325,7 +322,8 @@ func (sock *RawSocket) Listen(filter func(nettypes.Frame, uint32, uint32) nettyp
 		}
 		_, _, e1 := syscall.Syscall(syscall.SYS_POLL, pfdP, uintptr(1), pTOPointer)
 		if e1 != 0 {
-			return e1
+			println("Error")
+			//return e1
 		}
 	}
 	return nil

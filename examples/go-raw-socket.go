@@ -31,11 +31,17 @@ func main() {
 	defer close(exitChannel)
 	defer close(rxChannel)
 
+	//bpfString := "ip"
+	//bpfString := "arp"
 	//bpfString := "vlan"
+	bpfString := "ether proto 0xa8c8"
 	//bpfString := "vlan and ether proto 0xa8c8"
-	bpfString := ""
+	//bpfString := ""
+	//iFace := "enp64s0"
+	iFace := "vethLclToMcms"
+	//iFace := "vethLocal.4090"
 
-	if sock, err := rawsocket.NewRawSocket("enp64s0",
+	if sock, err := rawsocket.NewRawSocket(iFace,
 		rawsocket.RxChannel(rxChannel),
 		rawsocket.BerkleyPacketFilter(bpfString)); err == nil {
 
@@ -54,10 +60,10 @@ func main() {
 			})
 			waitForExit(exitChannel)
 		} else {
-			println("Failed to open RawSocket: %v", err)
+			fmt.Printf("Failed to open RawSocket: %s", err)
 		}
 	} else {
-		println("Failed to create RawSocket: %v", err)
+		fmt.Printf("Failed to create RawSocket: %s", err)
 	}
 }
 

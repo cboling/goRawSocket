@@ -24,10 +24,11 @@ import (
 )
 
 type ringFrame struct {
-	raw     []byte
-	txStart []byte
-	mb      uint32 // Memory barrier
-	tpHdr   *TPacket2Hdr
+	raw      []byte
+	txStart  []byte
+	mb       uint32 // Memory barrier
+	tpHdr    *TPacket2Hdr
+	sockAddr *SockAddr
 }
 
 func (rf *ringFrame) RxFrame(vlanEnabled bool) (nettypes.Frame, uint32, uint32) {
@@ -98,7 +99,17 @@ func (rf *ringFrame) rxReady() bool {
 	if rf.tpHdr.rxReady() && rf.mb == 1 {
 		fmt.Println("Ready but memory block already set")
 	}
-	return rf.tpHdr.rxReady() && atomic.CompareAndSwapUint32(&rf.mb, 0, 1)
+	ready := rf.tpHdr.rxReady() && atomic.CompareAndSwapUint32(&rf.mb, 0, 1)
+
+	if ready {
+		start := int(rf.macStart())
+		pkt := rf.raw[start:]
+		if pkt[0] == 0 && pkt[1] == 0 && pkt[2] == 0 && pkt[3] == 0 && pkt[4] == 0 && pkt[5] == 0 {
+			fmt.Println("") // Ready but zero destination address
+			fmt.Println("")
+		}
+	}
+	return ready
 }
 
 func (rf *ringFrame) rxSet() {

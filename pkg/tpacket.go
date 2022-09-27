@@ -17,6 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package rawsocket
 
 import (
@@ -70,54 +71,9 @@ type TPacket2Hdr struct {
 }
 
 var sizeOfTPacket2Hdr = unsafe.Sizeof(TPacket2Hdr{})
-
-var (
-	//	tpLenStart     int
-	//	tpLenStop      int
-	//	tpSnapLenStart int
-	//	tpSnapLenStop  int
-	//	tpMacStart     int
-	//	tpMacStop      int
-	//	tpNetStart     int
-	//	tpNetStop      int
-	//	tpSecStart     int
-	//	tpSecStop      int
-	//	tpNSecStart    int
-	//	tpNSecStop     int
-	//	tpTciStart     int
-	//	tpTciStop      int
-	//	tpTpidStart    int
-	//	tpTpidStop     int
-	//
-	txStart int
-)
+var txStart int
 
 func init() {
-	//	tpLenStart = HOST_INT_SIZE
-	//	tpLenStop = tpLenStart + HOST_INT_SIZE
-	//
-	//	tpSnapLenStart = tpLenStop
-	//	tpSnapLenStop = tpSnapLenStart + HOST_INT_SIZE
-	//
-	//	tpMacStart = tpSnapLenStop
-	//	tpMacStop = tpMacStart + HOST_SHORT_SIZE
-	//
-	//	tpNetStart = tpMacStop
-	//	tpNetStop = tpNetStart + HOST_SHORT_SIZE
-	//
-	//	tpSecStart = tpNetStop
-	//	tpSecStop = tpSecStart + HOST_INT_SIZE
-	//
-	//	tpNSecStart = tpSecStop
-	//	tpNSecStop = tpNSecStart + HOST_INT_SIZE
-	//
-	//	tpTciStart = tpNSecStop
-	//	tpTciStop = tpTciStart + HOST_SHORT_SIZE
-	//
-	//	tpTpidStart = tpTciStop
-	//	tpTpidStop = tpTpidStart + HOST_SHORT_SIZE
-	//
-	//	txStart = tpTpidStop + (4 * HOST_BYTE_SIZE)
 	txStart = int(sizeOfTPacket2Hdr)
 	r := txStart % TPacketAlignment
 	if r > 0 {
@@ -126,8 +82,7 @@ func init() {
 }
 
 func NewTPacket2Hdr(rawData []byte) *TPacket2Hdr { // unsafe.Pointer {
-	tpHdr := (*TPacket2Hdr)(unsafe.Pointer(&rawData[0]))
-	return tpHdr
+	return (*TPacket2Hdr)(unsafe.Pointer(&rawData[0]))
 }
 
 func (hdr *TPacket2Hdr) vlanValid() bool {
@@ -177,4 +132,61 @@ func (req *TPacketReq) getPointer() unsafe.Pointer {
 
 func (req *TPacketReq) size() int {
 	return HOST_INT_SIZE * 4
+}
+
+type SockAddr struct {
+	sllFamily   uint16   // Always AF_PACKET
+	sllProtocol uint16   // Physical-layer protocol  (BigEndian format)
+	sllIfIndex  uint32   // Interface number
+	sllHaType   uint16   // ARP hardware type. Ethernet is hardware type 1
+	sllPktType  uint8    // Packet type
+	sllHaLen    uint8    // Length of address
+	sllAddr     [8]uint8 // Physical-layer address
+}
+
+/* Packet types */
+const (
+	PACKET_HOST      = 0 // To us
+	PACKET_BROADCAST = 1 // To all
+	PACKET_MULTICAST = 2 // To group
+	PACKET_OTHERHOST = 3 // To someone else
+	PACKET_OUTGOING  = 4 // Outgoing of any type
+	PACKET_LOOPBACK  = 5 // MC/BRD frame looped back
+	PACKET_USER      = 6 // To user space
+	PACKET_FASTROUTE = 6 // Fastrouted frame
+	PACKET_KERNEL    = 7 // To kernel space
+	// Unused, PACKET_FASTROUTE and PACKET_LOOPBACK are invisible to user spacE
+)
+
+func NewSockAddr(rawData []byte) *SockAddr { // unsafe.Pointer {
+	sockAddr := (*SockAddr)(unsafe.Pointer(&rawData[0]))
+	return sockAddr
+}
+
+func Family(sa *SockAddr) uint16 {
+	return sa.sllFamily
+}
+
+func SockProtocol(sa *SockAddr) uint16 {
+	return sa.sllProtocol
+}
+
+func Ifindex(sa *SockAddr) uint32 {
+	return sa.sllIfIndex
+}
+
+func PacketType(sa *SockAddr) uint8 {
+	return sa.sllPktType
+}
+
+func AddrType(sa *SockAddr) uint16 {
+	return sa.sllHaType
+}
+
+func AddrLen(sa *SockAddr) uint8 {
+	return sa.sllHaLen
+}
+
+func Addr(sa *SockAddr) []byte {
+	return sa.sllAddr[:AddrLen(sa)]
 }

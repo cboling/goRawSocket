@@ -64,7 +64,7 @@ type RawSocket struct {
 	fd           int
 	bpfString    string
 	bpf          []pcap.BPFInstruction
-	rxChannel    chan []byte
+	rxChannel    chan nettypes.Frame
 
 	done chan bool
 
@@ -305,9 +305,9 @@ func (sock *RawSocket) Listen(filter func(nettypes.Frame, uint32, uint32) nettyp
 			if filter != nil && frame != nil {
 				frame = filter(frame, tpLen, tpSnapLen)
 			}
-			//if sock.rxChannel != nil && frame != nil {
-			//	sock.rxChannel <- frame
-			//}
+			if sock.rxChannel != nil && frame != nil {
+				sock.rxChannel <- frame
+			}
 			rf.rxSet()
 			rxIndex = (rxIndex + 1) % sock.frameNum
 		}

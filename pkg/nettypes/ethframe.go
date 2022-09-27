@@ -189,13 +189,13 @@ func NewFrame(data []byte) Frame {
 	return data
 }
 
-func (f *Frame) String(length uint32, indent int) string {
-	s := fmt.Sprintf("Len: %-5d, %s/%s", length, f.MACDestination(), f.MACSource())
+func (f *Frame) String(length int) string {
+	s := fmt.Sprintf("Len: %-5d, Dst/Src: %s/%s", length, f.MACDestination(), f.MACSource())
 	mT := f.VLANTag()
 	if mT == Tagged {
 		s += fmt.Sprintf(" (0x%04x/0x%03x-%d)", f.VLANTPID(), f.VLANID(), f.VLANID())
 	}
-	s += fmt.Sprintf(", EthType : %s\n", f.MACEthertype(mT))
+	s += fmt.Sprintf(", EthType: %s\n", f.MACEthertype(mT))
 	return s
 }
 

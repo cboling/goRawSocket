@@ -27,7 +27,7 @@ import (
 
 func main() {
 	exitChannel := make(chan int)
-	rxChannel := make(chan []byte)
+	rxChannel := make(chan nettypes.Frame)
 	defer close(exitChannel)
 	defer close(rxChannel)
 
@@ -45,19 +45,17 @@ func main() {
 		rawsocket.RxChannel(rxChannel),
 		rawsocket.BerkleyPacketFilter(bpfString)); err == nil {
 
-		if err = sock.Open(); err == nil {
-			//defer sock.Close()
-			frameNumber := 0
+		go processRxPackets(rxChannel, exitChannel)
 
-			sock.Listen(func(frame nettypes.Frame, frameLen uint32, capturedLen uint32) nettypes.Frame {
-				mT := frame.VLANTag()
-				if mT == nettypes.Tagged || true {
-					frameNumber += 1
-					fmt.Printf("Frame #: %6d: ", frameNumber)
-					fmt.Printf(frame.String(capturedLen, 0))
-				}
-				return frame
-			})
+		if err = sock.Open(); err == nil {
+			defer sock.Close()
+			var filterFunc func(nettypes.Frame, uint32, uint32) nettypes.Frame
+
+			//filterFunc = func(frame nettypes.Frame, frameLen uint32, capturedLen uint32) nettypes.Frame {
+			//	fmt.Printf(frame.String(int(capturedLen)))
+			//	return frame   // Return 'nil' if we should ignore frame
+			//}
+			sock.Listen(filterFunc)
 			waitForExit(exitChannel)
 		} else {
 			fmt.Printf("Failed to open RawSocket: %s", err)
@@ -67,14 +65,19 @@ func main() {
 	}
 }
 
-func processRxPackets(rxChannel chan []byte, exitChannel chan int) {
+func processRxPackets(rxChannel chan nettypes.Frame, exitChannel chan int) {
+	frameNumber := 0
 loop:
 	for {
 		select {
 		case <-exitChannel:
+			println("Exit signalled")
 			break loop
+
 		case packet := <-rxChannel:
-			println("Received a packet: %v octets", len(packet))
+			frameNumber += 1
+			fmt.Printf("Frame #: %6d: ", frameNumber)
+			fmt.Printf(packet.String(len(packet)))
 		default:
 		}
 	}

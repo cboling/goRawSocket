@@ -16,6 +16,8 @@
 
 package rawsocket
 
+import "github.com/cboling/goRawSocket/pkg/nettypes"
+
 type Option func(*RawSocket)
 
 func Domain(domain int) Option {
@@ -30,7 +32,7 @@ func Protocol(proto uint16) Option {
 	}
 }
 
-func RxChannel(channel chan []byte) Option {
+func RxChannel(channel chan nettypes.Frame) Option {
 	return func(args *RawSocket) {
 		args.rxChannel = channel
 	}

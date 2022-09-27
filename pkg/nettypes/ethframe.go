@@ -134,6 +134,8 @@ func (e EthType) String() string {
 		return "CTP"
 	case VeritasLLT:
 		return "VeritasLLT"
+	case IEEE1904_2:
+		return "IEEE1904_2"
 	default:
 		return fmt.Sprintf("unknown type:0x%02x", e[0:2])
 	}
@@ -236,30 +238,4 @@ func (f *Frame) MACEthertype(tag VLANTag) EthType {
 func (f *Frame) MACPayload(tag VLANTag) ([]byte, uint16) {
 	off := 14 + uint16(tag)
 	return (*f)[off:], off
-}
-
-//func (f *Frame) GetPayString(frameLen uint16, indent int, tag VLANTag) string {
-//	p, off := f.MACPayload(tag)
-//	frameLen -= off
-//	indent++
-//	switch f.MACEthertype(tag) {
-//	case ARP:
-//		return ARPPacket(p).String(indent)
-//	case IPv4:
-//		return IPv4Packet(p).String(frameLen, indent)
-//	default:
-//		return "unknown eth payload...\n"
-//	}
-//}
-
-func IsMACBroadcast(addr net.HardwareAddr) bool {
-	return addr[0] == 0xFF && addr[1] == 0xFF && addr[2] == 0xFF && addr[3] == 0xFF && addr[4] == 0xFF && addr[5] == 0xFF
-}
-
-func IsMACMulticastIPv4(addr net.HardwareAddr) bool {
-	return addr[0] == 0x01 && addr[1] == 0x00 && addr[2] == 0x5E
-}
-
-func IsMACMulticastIPv6(addr net.HardwareAddr) bool {
-	return addr[0] == 0x33 && addr[1] == 0x33
 }

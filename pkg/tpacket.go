@@ -25,12 +25,12 @@ import (
 )
 
 const (
-	TPACKET_V2 = 1
+	TpacketV2 = 1
 
-	HOST_BYTE_SIZE  = 1
-	HOST_SHORT_SIZE = 2
-	HOST_INT_SIZE   = 4
-	HOST_LONG_SIZE  = 8
+	HostByteSize  = 1
+	HostShortSize = 2
+	HostIntSize   = 4
+	HostLongSize  = 8
 
 	/* rx status */
 	tpStatusKernel        = 0
@@ -131,7 +131,7 @@ func (req *TPacketReq) getPointer() unsafe.Pointer {
 }
 
 func (req *TPacketReq) size() int {
-	return HOST_INT_SIZE * 4
+	return HostIntSize * 4
 }
 
 type SockAddr struct {
@@ -146,16 +146,16 @@ type SockAddr struct {
 
 /* Packet types */
 const (
-	PACKET_HOST      = 0 // To us
-	PACKET_BROADCAST = 1 // To all
-	PACKET_MULTICAST = 2 // To group
-	PACKET_OTHERHOST = 3 // To someone else
-	PACKET_OUTGOING  = 4 // Outgoing of any type
-	PACKET_LOOPBACK  = 5 // MC/BRD frame looped back
-	PACKET_USER      = 6 // To user space
-	PACKET_FASTROUTE = 6 // Fastrouted frame
-	PACKET_KERNEL    = 7 // To kernel space
-	// Unused, PACKET_FASTROUTE and PACKET_LOOPBACK are invisible to user spacE
+	PacketHost      = 0 // To us
+	PacketBroadcast = 1 // To all
+	PacketMulticast = 2 // To group
+	PacketOtherHost = 3 // To someone else
+	PacketOutgoing  = 4 // Outgoing of any type
+	PacketLoopback  = 5 // MC/BRD frame looped back
+	PacketUser      = 6 // To user space
+	PacketFastRoute = 6 // Fastrouted frame
+	PacketKernel    = 7 // To kernel space
+	// Unused, PacketLoopback and PacketFastRoute are invisible to user space
 )
 
 func NewSockAddr(rawData []byte) *SockAddr { // unsafe.Pointer {

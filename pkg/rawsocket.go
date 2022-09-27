@@ -36,25 +36,19 @@ const (
 
 	MinimumFrameSize = TPacketAlignment << 7
 	MaximumFrameSize = TPacketAlignment << 11
-
-	EnableRX      = 1 << 0
-	EnableTX      = 1 << 1
-	DisableTXLoss = 1 << 2
 )
 
 const (
-	_ETHALen = 6
 	// Packet socket options
-	PACKET_RX_RING = 5
-	PACKET_AUXDATA = 8
-	PACKET_VERSION = 10
-	PACKET_TX_RING = 13
+	PacketRxRing  = 5
+	PacketVersion = 10
+	PacketTxRing  = 13
 	// TODO: Support for any of the following useful?
-	PACKET_STATISTICS   = 6 /// Counts packets and drops
-	PACKET_LOSS         = 14
-	PACKET_VNET_HDR     = 15
-	PACKET_TX_TIMESTAMP = 16
-	PACKET_TIMESTAMP    = 17
+	PacketStatistics  = 6 /// Counts packets and drops
+	PacketLoss        = 14
+	PacketVnetHdr     = 15
+	PacketTxTimestamp = 16
+	PacketTimestamp   = 17
 
 	/* poll events */
 	pollIn  = 0x01
@@ -94,8 +88,8 @@ type RawSocket struct {
 	// TODO: Add statistics struct
 }
 
-// NewRawSocket initializes an new raw socket but does not open it
-func NewRawSocket(intf string, opts ...RawSocketOption) (*RawSocket, error) {
+// NewRawSocket initializes a new raw socket but does not open it
+func NewRawSocket(intf string, opts ...Option) (*RawSocket, error) {
 	sock := &RawSocket{
 		netInterface: intf,
 		fd:           invalidFd,
@@ -119,7 +113,7 @@ func NewRawSocket(intf string, opts ...RawSocketOption) (*RawSocket, error) {
 			MinimumFrameSize, MaximumFrameSize)
 	}
 	if sock.maxFrames < 16 && sock.maxFrames%8 == 0 {
-		return nil, fmt.Errorf("Max Total Frames must be at least 16, and be a multiple of 8")
+		return nil, fmt.Errorf("max Total Frames must be at least 16, and be a multiple of 8")
 	}
 	if len(sock.bpfString) > 0 {
 		var err error
@@ -143,9 +137,9 @@ func (sock *RawSocket) Open() error {
 	if err == nil {
 		if sock.bpf != nil {
 			type SockFprog struct {
-				Len       uint16
-				Pad_cgo_0 [6]byte
-				Filter    *pcap.BPFInstruction
+				Len     uint16
+				PadCgo0 [6]byte
+				Filter  *pcap.BPFInstruction
 			}
 			var program SockFprog
 			program.Len = uint16(len(sock.bpf))
@@ -161,11 +155,11 @@ func (sock *RawSocket) Open() error {
 		// Bind to the network interface
 		err = syscall.BindToDevice(fd, sock.netInterface)
 		if err != nil {
-			syscall.Close(fd)
+			_ = syscall.Close(fd)
 			return err
 		}
-		if err = syscall.SetsockoptInt(fd, syscall.SOL_PACKET, PACKET_VERSION, TPACKET_V2); err != nil {
-			syscall.Close(fd)
+		if err = syscall.SetsockoptInt(fd, syscall.SOL_PACKET, PacketVersion, TpacketV2); err != nil {
+			_ = syscall.Close(fd)
 			return err
 		}
 		// TODO: Have separate sizes/number-of-frames for RxRing and TxRing
@@ -185,19 +179,19 @@ func (sock *RawSocket) Open() error {
 
 		if sock.rxEnabled {
 			_, _, e1 := syscall.Syscall6(uintptr(syscall.SYS_SETSOCKOPT), uintptr(fd),
-				uintptr(syscall.SOL_PACKET), uintptr(PACKET_RX_RING), uintptr(reqP),
+				uintptr(syscall.SOL_PACKET), uintptr(PacketRxRing), uintptr(reqP),
 				uintptr(req.size()), 0)
 			if e1 != 0 {
-				syscall.Close(fd)
+				_ = syscall.Close(fd)
 				return errnoErr(e1)
 			}
 		}
 		if sock.txEnabled {
 			_, _, e1 := syscall.Syscall6(uintptr(syscall.SYS_SETSOCKOPT), uintptr(fd),
-				uintptr(syscall.SOL_PACKET), uintptr(PACKET_TX_RING), uintptr(reqP),
+				uintptr(syscall.SOL_PACKET), uintptr(PacketTxRing), uintptr(reqP),
 				uintptr(req.size()), 0)
 			if e1 != 0 {
-				syscall.Close(fd)
+				_ = syscall.Close(fd)
 				return errnoErr(e1)
 			}
 		}
@@ -213,7 +207,7 @@ func (sock *RawSocket) Open() error {
 				syscall.PROT_WRITE, syscall.MAP_SHARED|syscall.MAP_LOCKED|
 				syscall.MAP_POPULATE)
 			if err != nil {
-				syscall.Close(fd)
+				_ = syscall.Close(fd)
 				return err
 			}
 			sock.raw = bs
@@ -381,7 +375,7 @@ func (sock *RawSocket) FlushFrames() (uint, error, []error) {
 	}
 	written := atomic.SwapInt32(&sock.txWritten, 0)
 	framesFlushed := uint(0)
-	frameNum := int32(sock.frameNum)
+	frameNum := sock.frameNum
 	z := uintptr(0)
 	for t, w := index, written; w > 0; w-- {
 		sock.txFrames[t].txSet()

@@ -16,57 +16,57 @@
 
 package rawsocket
 
-type RawSocketOption func(*RawSocket)
+type Option func(*RawSocket)
 
-func Domain(domain int) RawSocketOption {
+func Domain(domain int) Option {
 	return func(args *RawSocket) {
 		args.domain = domain
 	}
 }
 
-func Protocol(proto uint16) RawSocketOption {
+func Protocol(proto uint16) Option {
 	return func(args *RawSocket) {
 		args.proto = proto
 	}
 }
 
-func RxChannel(channel chan []byte) RawSocketOption {
+func RxChannel(channel chan []byte) Option {
 	return func(args *RawSocket) {
 		args.rxChannel = channel
 	}
 }
 
-func MaxFrameSize(maxSize uint16) RawSocketOption {
+func MaxFrameSize(maxSize uint16) Option {
 	return func(args *RawSocket) {
 		args.frameSize = maxSize
 	}
 }
 
-func MaxTotalFrames(maxFrames uint) RawSocketOption {
+func MaxTotalFrames(maxFrames uint) Option {
 	return func(args *RawSocket) {
 		args.maxFrames = maxFrames
 	}
 }
 
-func RxEnable(enable bool) RawSocketOption {
+func RxEnable(enable bool) Option {
 	return func(args *RawSocket) {
 		args.rxEnabled = enable
 	}
 }
 
-func TxEnable(enable bool) RawSocketOption {
+func TxEnable(enable bool) Option {
 	return func(args *RawSocket) {
 		args.txEnabled = enable
 	}
 }
 
-func VlanEnable(enable bool) RawSocketOption {
+func VlanEnable(enable bool) Option {
 	return func(args *RawSocket) {
 		args.vlanEnable = enable
 	}
 }
 
-func BerkleyPacketFilter(bpf string) RawSocketOption {
+func BerkleyPacketFilter(bpf string) Option {
 	return func(args *RawSocket) {
 		args.bpfString = bpf
 	}

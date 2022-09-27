@@ -34,11 +34,11 @@ type ringFrame struct {
 func (rf *ringFrame) RxFrame(vlanEnabled bool) (nettypes.Frame, uint32, uint32) {
 	start := int(rf.macStart())
 
-	vlanPresent := vlanEnabled && rf.vlan_valid()
+	vlanPresent := vlanEnabled && rf.vlanValid()
 	if vlanPresent {
 		vlanId := rf.tpVlanTci()
 		vlanTpid := uint16(0x8100)
-		if rf.tpid_valid() {
+		if rf.tpidValid() {
 			vlanTpid = rf.tpVlanTpid()
 		}
 		vlanHdr := make([]byte, 4)
@@ -87,11 +87,11 @@ func (rf *ringFrame) tpVlanTpid() uint16 {
 	return rf.tpHdr.TpVlanTpid
 }
 
-func (rf *ringFrame) vlan_valid() bool {
+func (rf *ringFrame) vlanValid() bool {
 	return rf.tpHdr.vlanValid()
 }
 
-func (rf *ringFrame) tpid_valid() bool {
+func (rf *ringFrame) tpidValid() bool {
 	return rf.tpHdr.tpidValid()
 }
 

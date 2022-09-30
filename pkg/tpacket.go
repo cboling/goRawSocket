@@ -25,8 +25,6 @@ import (
 )
 
 const (
-	TpacketV2 = 1
-
 	HostByteSize  = 1
 	HostShortSize = 2
 	HostIntSize   = 4
@@ -53,6 +51,11 @@ const (
 	tpStatusTSSoftware    = 1 << 29
 	tpStatusTSRawHardware = 1 << 31
 )
+
+type TPacketVersion int
+
+const TpacketV2 TPacketVersion = 1
+const TpacketV3 TPacketVersion = 2
 
 type TPacket2Hdr struct {
 	TpStatus   uint32

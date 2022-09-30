@@ -16,7 +16,10 @@
 
 package rawsocket
 
-import "github.com/cboling/goRawSocket/pkg/nettypes"
+import (
+	"fmt"
+	"github.com/cboling/goRawSocket/pkg/nettypes"
+)
 
 type Option func(*RawSocket)
 
@@ -38,14 +41,33 @@ func RxChannel(channel chan nettypes.Frame) Option {
 	}
 }
 
-func MaxFrameSize(maxSize uint16) Option {
+func Version(version TPacketVersion) Option {
 	return func(args *RawSocket) {
-		args.frameSize = maxSize
+		if version != TpacketV2 && version != TpacketV3 {
+			panic("Unsupported TPacket Version")
+		}
+		args.packetVersion = version
+	}
+}
+
+func MaxFrameSize(frameSize uint16) Option {
+	return func(args *RawSocket) {
+		if frameSize < MinimumFrameSize ||
+			frameSize > MaximumFrameSize ||
+			(frameSize&(frameSize-1)) > 0 {
+			msg := fmt.Sprintf("frame Size must be at least %d (MinimumFrameSize), be at most %d (MaximumFrameSize), and be a power of 2",
+				MinimumFrameSize, MaximumFrameSize)
+			panic(msg)
+		}
+		args.frameSize = frameSize
 	}
 }
 
 func MaxTotalFrames(maxFrames uint) Option {
 	return func(args *RawSocket) {
+		if maxFrames < 16 && maxFrames%8 == 0 {
+			panic("max Total Frames must be at least 16, and be a multiple of 8")
+		}
 		args.maxFrames = maxFrames
 	}
 }
@@ -62,14 +84,20 @@ func TxEnable(enable bool) Option {
 	}
 }
 
-func VlanEnable(enable bool) Option {
+func VlanRxAdjustEnable(enable bool) Option {
 	return func(args *RawSocket) {
-		args.vlanEnable = enable
+		args.vlanAdjustEnable = enable
 	}
 }
 
 func BerkleyPacketFilter(bpf string) Option {
 	return func(args *RawSocket) {
 		args.bpfString = bpf
+	}
+}
+
+func PacketRxFilter(filter func(nettypes.Frame, uint32, uint32) nettypes.Frame) Option {
+	return func(args *RawSocket) {
+		args.filter = filter
 	}
 }

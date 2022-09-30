@@ -41,22 +41,25 @@ func main() {
 	iFace := "vethLclToMcms"
 	//iFace := "vethLocal.4090"
 
+	var filterFunc func(nettypes.Frame, uint32, uint32) nettypes.Frame
+	//filterFunc = func(frame nettypes.Frame, frameLen uint32, capturedLen uint32) nettypes.Frame {
+	//	fmt.Printf(frame.String(int(capturedLen)))
+	//	return frame   // Return 'nil' if we should ignore frame
+	//}
+
 	if sock, err := rawsocket.NewRawSocket(iFace,
 		rawsocket.RxChannel(rxChannel),
-		rawsocket.BerkleyPacketFilter(bpfString)); err == nil {
-
+		rawsocket.BerkleyPacketFilter(bpfString),
+		rawsocket.PacketRxFilter(filterFunc),
+	); err == nil {
+		// Start background packet processor
 		go processRxPackets(rxChannel, exitChannel)
 
+		// Open the socket and wait for exit to be signalled
 		if err = sock.Open(); err == nil {
 			defer sock.Close()
-			var filterFunc func(nettypes.Frame, uint32, uint32) nettypes.Frame
-
-			//filterFunc = func(frame nettypes.Frame, frameLen uint32, capturedLen uint32) nettypes.Frame {
-			//	fmt.Printf(frame.String(int(capturedLen)))
-			//	return frame   // Return 'nil' if we should ignore frame
-			//}
-			sock.Listen(filterFunc)
 			waitForExit(exitChannel)
+			println("Main: Exiting example program")
 		} else {
 			fmt.Printf("Failed to open RawSocket: %s", err)
 		}
@@ -71,7 +74,8 @@ loop:
 	for {
 		select {
 		case <-exitChannel:
-			println("Exit signalled")
+			println("BackgroundRx: Exit signalled")
+			exitChannel <- 0
 			break loop
 
 		case packet := <-rxChannel:

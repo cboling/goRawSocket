@@ -22,23 +22,20 @@ import (
 	"unsafe"
 )
 
-func errnoErr(e syscall.Errno) error {
+func errnoErr(e syscall.Errno, operation string) error {
 	switch e {
 	case 0:
 		return nil
 	case syscall.EAGAIN:
-		return fmt.Errorf("try again")
+		return fmt.Errorf("%v: try again", operation)
 	case syscall.EINVAL:
-		return fmt.Errorf("invalid argument")
+		return fmt.Errorf("%v: invalid argument", operation)
 	case syscall.ENOENT:
-		return fmt.Errorf("no such file or directory")
+		return fmt.Errorf("%v: no such file or directory", operation)
+	default:
+		return fmt.Errorf("%v: Error: %v", operation, e)
 	}
 	return e
-}
-
-func copyFx(dst, src []byte, len uint16) uint16 {
-	copy(dst, src)
-	return len
 }
 
 func bigEndian() (ret bool) {
@@ -53,12 +50,6 @@ func Htons(value uint16) uint16 {
 		return value
 	}
 	return (value << 8) | (value >> 8)
-}
-
-type txIndexError int32
-
-func (ie txIndexError) Error() string {
-	return fmt.Sprintf("bad format in tx frame %d", ie)
 }
 
 func calculateLargestFrame(ceil uint) uint {

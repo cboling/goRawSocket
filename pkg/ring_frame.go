@@ -19,7 +19,6 @@ package rawsocket
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/cboling/goRawSocket/pkg/nettypes"
 	"sync/atomic"
 )
 
@@ -31,36 +30,35 @@ type ringFrame struct {
 	sockAddr *SockAddr
 }
 
-func (rf *ringFrame) RxFrame(vlanEnabled bool) (nettypes.Frame, uint32, uint32) {
-	start := int(rf.macStart())
+func (rf *ringFrame) macStart() uint16 {
+	return rf.tpHdr.TpMac
+}
 
-	vlanPresent := vlanEnabled && rf.vlanValid()
-	if vlanPresent {
-		vlanId := rf.tpVlanTci()
+func (rf *ringFrame) vlanAdjust() {
+	if rf.vlanValid() {
+		// Adjust for VLAN header size
+		rf.tpHdr.TpMac -= 4
+		rf.tpHdr.TpSnapLen += 4
+		rf.tpHdr.TpLen += 4
+
+		// Move Dst/Src MAC up 4 bytes and add vlan header (keeping original MMAP buffer)
+		// and return that instead.  We reserved 4 octets in the ring buffer to accomidate
+		// for this
+		start := int(rf.macStart())
+		for offset := 0; offset < 12; offset++ {
+			rf.raw[start+offset] = rf.raw[start+offset+1]
+		}
+		// Insert VLAN Header
 		vlanTpid := uint16(0x8100)
 		if rf.tpidValid() {
 			vlanTpid = rf.tpVlanTpid()
 		}
-		vlanHdr := make([]byte, 4)
-		binary.BigEndian.PutUint16(vlanHdr, vlanTpid)
-		binary.BigEndian.PutUint16(vlanHdr[2:], vlanId)
-		newLength := rf.tpSnapLen() + 4
-		buf := make([]byte, newLength)
-		copy(buf, rf.raw[start:start+12])
-		copy(buf[12:], vlanHdr)
-		copy(buf[16:], rf.raw[start+12:start+int(newLength)-4])
+		binary.BigEndian.PutUint16(rf.raw[start+12:], vlanTpid)
+		binary.BigEndian.PutUint16(rf.raw[start+14:], rf.tpVlanTci())
 
-		frame := nettypes.NewFrame(buf)
-		return frame, newLength, newLength
+		// Tweak TPacket Rx Status field since buffer now has VID
+		rf.tpHdr.TpStatus &= ^uint32(tpStatusVlanValid | tpStatusVlanTpidValid)
 	}
-	buf := make([]byte, rf.tpSnapLen())
-	copy(buf, rf.raw[start:])
-	frame := nettypes.NewFrame(buf)
-	return frame, rf.tpLen(), rf.tpSnapLen()
-}
-
-func (rf *ringFrame) macStart() uint16 {
-	return rf.tpHdr.TpMac
 }
 
 func (rf *ringFrame) tpLen() uint32 {

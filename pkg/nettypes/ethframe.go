@@ -185,8 +185,16 @@ func (pcp PCP) String() string {
 
 type Frame []byte
 
+// NewFrame wraps an existing slice of bytes and provides some simple access functions to the MAC layer
 func NewFrame(data []byte) Frame {
 	return data
+}
+
+// NewFrameAndBuffer copies a slice into a new slice and returns a Frame
+func NewFrameAndBuffer(data []byte) Frame {
+	newData := make([]byte, len(data))
+	copy(newData, data[:])
+	return newData
 }
 
 func (f *Frame) String(length int) string {
@@ -208,6 +216,7 @@ func (f *Frame) MACDestination() net.HardwareAddr {
 }
 
 func (f *Frame) VLANTag() VLANTag {
+	// TODO: Can ths be change to handle multiple tags.  Perhaps this should just return number of tags 0..max
 	if ((*f)[12] == 0x81 && (*f)[13] == 0x00) || ((*f)[12] == 0x88 && (*f)[13] == 0xa8) {
 		return Tagged
 	}

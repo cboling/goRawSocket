@@ -16,8 +16,8 @@
 
 package rawsocket
 
-import "C"
 import (
+	"C"
 	"fmt"
 	"github.com/cboling/goRawSocket/pkg/nettypes"
 	"github.com/google/gopacket/layers"

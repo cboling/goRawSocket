@@ -55,16 +55,17 @@ func main() {
 		// Start background packet processor
 		go processRxPackets(rxChannel, exitChannel)
 
+		fmt.Printf("Opening raw socket on %s\n", iFace)
 		// Open the socket and wait for exit to be signalled
 		if err = sock.Open(); err == nil {
 			defer sock.Close()
 			waitForExit(exitChannel)
-			println("Main: Exiting example program")
+			fmt.Printf("\nMain: Exiting example program\n")
 		} else {
-			fmt.Printf("Failed to open RawSocket: %s", err)
+			fmt.Printf("\nFailed to open RawSocket: %s\n", err)
 		}
 	} else {
-		fmt.Printf("Failed to create RawSocket: %s", err)
+		fmt.Printf("\nFailed to create RawSocket: %s\n", err)
 	}
 }
 
@@ -74,7 +75,7 @@ loop:
 	for {
 		select {
 		case <-exitChannel:
-			println("BackgroundRx: Exit signalled")
+			fmt.Printf("\nBackgroundRx: Exit signalled\n")
 			exitChannel <- 0
 			break loop
 

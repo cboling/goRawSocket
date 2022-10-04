@@ -19,7 +19,7 @@ run:
 go: '1.19'
 
 linters:
-  # disable-all: true
+  disable-all: true
   enable:
     #- gochecknoglobals
     #- gochecknoinits
@@ -28,6 +28,7 @@ linters:
     - gofmt
     - gosec
     - errcheck
+    # - unused
     # - golint
     # - govet
     # - ineffassign
@@ -45,5 +46,6 @@ issues:
     - linters:
         - gocritic
       text: "ifElseChain:" #it should be up to a developer to decide which operator to use
+
 
 #  exclude:

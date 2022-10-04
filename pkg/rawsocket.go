@@ -86,7 +86,7 @@ type RawSocket struct {
 	rxFrames  []*ringFrame
 
 	txEnabled bool
-	//txLossDisabled bool
+	// txLossDisabled bool
 	txFrameSize      uint16
 	txIndex          int32
 	txWritten        int32
@@ -185,7 +185,7 @@ func (sock *RawSocket) Open() error {
 func (sock *RawSocket) setTpacket(fd int) error {
 	if sock.packetVersion == TpacketV3 {
 		// TODO: Not yet supported
-		//if err := syscall.SetsockoptInt(fd, syscall.SOL_PACKET, PacketVersion, int(sock.packetVersion)); err != nil {
+		// if err := syscall.SetsockoptInt(fd, syscall.SOL_PACKET, PacketVersion, int(sock.packetVersion)); err != nil {
 		if err := fmt.Errorf("TODO: Not yet supported"); err == nil {
 			return nil
 		}
@@ -362,12 +362,13 @@ func (sock *RawSocket) rxFrame(rf *ringFrame) (nettypes.Frame, uint32, uint32) {
 }
 
 // Listen to all specified packets in the RX ring-buffer
-func (sock *RawSocket) listen() error {
+func (sock *RawSocket) listen() {
 	if !sock.rxEnabled {
-		return fmt.Errorf("the RX ring is disabled on this socket")
+		panic("the RX ring is disabled on this socket")
 	}
 	if !atomic.CompareAndSwapInt32(&sock.listening, 0, 1) {
-		return fmt.Errorf("there is already a listener on this socket")
+		fmt.Println("there is already a listener on this socket")
+		return
 	}
 	pfd := &pollfd{}
 	pfd.fd = sock.fd
@@ -405,23 +406,21 @@ func (sock *RawSocket) listen() error {
 				rxChannel <- frame
 			}
 			if atomic.LoadInt32(&sock.listening) == 0 {
-				return nil
+				return
 			}
 		}
 		_, _, e1 := syscall.Syscall(syscall.SYS_POLL, pfdP, uintptr(1), pTOPointer)
 		if e1 != 0 && e1 != syscall.EINTR && e1 != syscall.ETIMEDOUT {
 			println("Error")
-			//return e1
 		}
 	}
-	return nil
 }
 
 // TxFrame writes a raw frame in bytes to the TX ring buffer.
-// The length of the frame must be specified or -1 can be provided and the size of
+// The length of the frame must be specified or 0 can be provided and the size of
 // the byte buffer will be used.
 func (sock *RawSocket) TxFrame(buf []byte, l uint16) (int32, error) {
-	if l < 0 {
+	if l == 0 {
 		l = uint16(len(buf))
 	}
 	if l > sock.txFrameSize {
@@ -472,11 +471,11 @@ func (sock *RawSocket) Flush() (uint, error, []error) {
 	var errs []error = nil
 	for t, w := index, written; w > 0; w-- {
 		tx := sock.txFrames[t]
-		//if sock.txLossDisabled && tx.txWrongFormat() {
+		// if sock.txLossDisabled && tx.txWrongFormat() {
 		//	errs = append(errs, txIndexError(t))
-		//} else {
-		//	framesFlushed++
-		//}
+		// } else {
+		// 	framesFlushed++
+		// }
 		framesFlushed++
 		tx.txSetMB()
 		t = (t + 1) % frameNum

@@ -35,11 +35,11 @@ func errnoErr(e syscall.Errno, operation string) error {
 	default:
 		return fmt.Errorf("%v: Error: %v", operation, e)
 	}
-	return e
 }
 
 func bigEndian() (ret bool) {
 	var i = 0x1
+	// #nosec
 	bs := (*[int(unsafe.Sizeof(0))]byte)(unsafe.Pointer(&i))
 	return bs[0] == 0
 
@@ -57,6 +57,6 @@ func calculateLargestFrame(ceil uint) uint {
 	for sz < ceil {
 		sz <<= 1
 	}
-	//return sz >> 1
+	// return sz >> 1
 	return sz
 }

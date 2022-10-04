@@ -73,6 +73,7 @@ type TPacket2Hdr struct {
 	tPPadding4 uint8
 }
 
+// #nosec
 var sizeOfTPacket2Hdr = unsafe.Sizeof(TPacket2Hdr{})
 var txStart int
 
@@ -85,6 +86,7 @@ func init() {
 }
 
 func NewTPacket2Hdr(rawData []byte) *TPacket2Hdr { // unsafe.Pointer {
+	// #nosec
 	return (*TPacket2Hdr)(unsafe.Pointer(&rawData[0]))
 }
 
@@ -120,6 +122,7 @@ type TPacketReq struct {
 }
 
 func (req *TPacketReq) getPointer() unsafe.Pointer {
+	// #nosec
 	return unsafe.Pointer(&(struct {
 		blockSize,
 		blockNum,
@@ -161,7 +164,8 @@ const (
 	// Unused, PacketLoopback and PacketFastRoute are invisible to user space
 )
 
-func NewSockAddr(rawData []byte) *SockAddr { // unsafe.Pointer {
+func NewSockAddr(rawData []byte) *SockAddr {
+	// #nosec
 	sockAddr := (*SockAddr)(unsafe.Pointer(&rawData[0]))
 	return sockAddr
 }

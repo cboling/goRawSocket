@@ -71,11 +71,12 @@ lint-mod: ## Verify the Go dependencies
 	@[[ `git ls-files --exclude-standard --others go.mod go.sum vendor` == "" ]] || (echo "ERROR: Untracked files detected after running go mod tidy / go mod vendor" && git status -- go.mod go.sum vendor && git checkout -- go.mod go.sum vendor && exit 1)
 	@echo "Vendor check OK."
 
-lint-go: ## Use golintci-lint on your project
-	$(eval OUTPUT_OPTIONS = $(shell [ "${EXPORT_RESULT}" == "true" ] && echo "--out-format checkstyle ./... | tee /dev/tty > checkstyle-report.xml" || echo "" ))
-	docker run --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:latest-alpine golangci-lint run --deadline=65s $(OUTPUT_OPTIONS)
+#lint-go: ## Use golintci-lint on your project
+#	$(eval OUTPUT_OPTIONS = $(shell [ "${EXPORT_RESULT}" == "true" ] && echo "--out-format checkstyle ./... | tee /dev/tty > checkstyle-report.xml" || echo "" ))
+#	docker run --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:latest-alpine golangci-lint run --deadline=65s $(OUTPUT_OPTIONS)
 
-lint: lint-go  ## Run all lint targets
+#lint: lint-mod lint-go  ## Run all lint targets
+lint: lint-mod  ## Run all lint targets
 
 ## Test:
 test: ## Run unit tests
@@ -90,7 +91,7 @@ sca: ## Runs static code analysis with the golangci-lint tool
 	@rm -rf ./sca-report
 	@mkdir -p ./sca-report
 	@echo "Running static code analysis..."
-	@${GOLANGCI_LINT} run --deadline=6m --out-format junit-xml ./... | tee ./sca-report/sca-report.xml
+	@${GOLANGCI_LINT} run --deadline=6m --out-format junit-xml ${PKG_DIR} | tee ./sca-report/sca-report.xml
 	@echo ""
 	@echo "Static code analysis OK"
 

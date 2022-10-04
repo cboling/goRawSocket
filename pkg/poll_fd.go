@@ -28,6 +28,7 @@ type pollfd struct {
 
 func (pfd *pollfd) getPointer() unsafe.Pointer {
 	if HostIntSize == 4 {
+		// #nosec
 		return unsafe.Pointer(&(struct {
 			fd      int32
 			events  int16
@@ -38,6 +39,7 @@ func (pfd *pollfd) getPointer() unsafe.Pointer {
 			pfd.revents,
 		}))
 	} else {
+		// #nosec
 		return unsafe.Pointer(&(struct {
 			fd      int64
 			events  int16

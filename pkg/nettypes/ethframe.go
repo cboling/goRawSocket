@@ -193,7 +193,7 @@ func NewFrame(data []byte) Frame {
 // NewFrameAndBuffer copies a slice into a new slice and returns a Frame
 func NewFrameAndBuffer(data []byte) Frame {
 	newData := make([]byte, len(data))
-	copy(newData, data[:])
+	copy(newData, data)
 	return newData
 }
 

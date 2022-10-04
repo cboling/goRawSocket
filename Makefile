@@ -76,7 +76,7 @@ lint-go: ## Use golintci-lint on your project
 	@${GOLANGCI_LINT} run --deadline=65s $(OUTPUT_OPTIONS)
 
 #lint: lint-mod lint-go  ## Run all lint targets
-lint: lint-mod  ## Run all lint targets
+lint: lint-mod lint-go ## Run all lint targets
 
 ## Test:
 test: ## Run unit tests

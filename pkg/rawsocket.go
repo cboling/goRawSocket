@@ -36,6 +36,8 @@ const (
 
 	MinimumFrameSize = TPacketAlignment << 7
 	MaximumFrameSize = TPacketAlignment << 11
+
+	DefaultMaxPackets = 128
 )
 
 const DefaultFrameSize uint16 = MinimumFrameSize
@@ -105,7 +107,7 @@ func NewRawSocket(intf string, opts ...Option) (*RawSocket, error) {
 		proto:            DefaultProtocol,
 		packetVersion:    DefaultTPacketVersion,
 		frameSize:        DefaultFrameSize,
-		maxFrames:        128,
+		maxFrames:        DefaultMaxPackets,
 		rxEnabled:        true,
 		txEnabled:        true,
 		vlanAdjustEnable: true,
@@ -335,6 +337,11 @@ func (sock *RawSocket) MaxPackets() int32 {
 
 // MaxPacketSize returns the frame size in bytes
 func (sock *RawSocket) MaxPacketSize() uint16 {
+	return sock.frameSize
+}
+
+// MaxTxPacketSize returns the frame size in bytes
+func (sock *RawSocket) MaxTxPacketSize() uint16 {
 	return sock.txFrameSize
 }
 

@@ -43,24 +43,18 @@ PKG_SRC := $(shell find $(PKG_DIR) -name \*.go -type f)
 EXAMPLE_SRC = $(shell find $(EXAMPLES_DIR) -name \*.go -type f)
 EXAMPLE_APPS := $(patsubst ./examples/%/,%,$(sort $(dir $(wildcard ./examples/*/))))
 
-# tool containers.  The ONF OpenSource project VOLTHA contains several containers
-# that are useful for building and testing.  Look for the voltha-go or voltha-lib-go
-# projects on https://github.com/opencord for any updates.  The initial format of this
-# makefile was based on the voltha-go makefile from Fall 2022.
-
-VOLTHA_TOOLS_VERSION ?= 2.4.0
-
-GO                = docker run --rm --user $$(id -u):$$(id -g) -v ${CURDIR}:/app $(shell test -t 0 && echo "-it") -v gocache:/.cache -v gocache-${VOLTHA_TOOLS_VERSION}:/go/pkg voltha/voltha-ci-tools:${VOLTHA_TOOLS_VERSION}-golang go
-GO_JUNIT_REPORT   = docker run --rm --user $$(id -u):$$(id -g) -v ${CURDIR}:/app -i voltha/voltha-ci-tools:${VOLTHA_TOOLS_VERSION}-go-junit-report go-junit-report
-GOCOVER_COBERTURA = docker run --rm --user $$(id -u):$$(id -g) -v ${CURDIR}:/app/src/github.com/opencord/voltha-openolt-adapter -i voltha/voltha-ci-tools:${VOLTHA_TOOLS_VERSION}-gocover-cobertura gocover-cobertura
-GOLANGCI_LINT     = docker run --rm --user $$(id -u):$$(id -g) -v ${CURDIR}:/app $(shell test -t 0 && echo "-it") -v gocache:/.cache -v gocache-${VOLTHA_TOOLS_VERSION}:/go/pkg voltha/voltha-ci-tools:${VOLTHA_TOOLS_VERSION}-golangci-lint golangci-lint
+# Applications
+GO                = go
+GO_JUNIT_REPORT   = go-junit-report
+GOCOVER_COBERTURA = gocover-cobertura
+GOLANGCI_LINT     = golangci-lint
 
 TARGETS := help build lint-mod lint-go lint test sca clan distclean mod-update examples
 .PHONY: $(TARGET)
 .DEFAULT_GOAL := help
 
 ## Default:
-build: test examples ## Only a library project, so build target is unit tests and example applications
+build: test examples ## Only a library project, so default build target is unit tests and example applications
 
 ## Lint:
 lint-mod: ## Verify the Go dependencies
@@ -86,7 +80,7 @@ lint: lint-go  ## Run all lint targets
 ## Test:
 test: ## Run unit tests
 	@mkdir -p ./tests/results
-	@${GO} test -mod=vendor -v -coverprofile ./tests/results/go-test-coverage.out -covermode count ./... 2>&1 | tee ./tests/results/go-test-results.out ;\
+	@${GO} test -mod=mod -v -coverprofile ./tests/results/go-test-coverage.out -covermode count ./... 2>&1 | tee ./tests/results/go-test-results.out ;\
 	RETURN=$$? ;\
 	${GO_JUNIT_REPORT} < ./tests/results/go-test-results.out > ./tests/results/go-test-results.xml ;\
 	${GOCOVER_COBERTURA} < ./tests/results/go-test-coverage.out > ./tests/results/go-test-coverage.xml ;\
@@ -127,7 +121,7 @@ $(EXAMPLES_BIN):
 examples: $(EXAMPLES_BIN) $(EXAMPLE_APPS)  ## Build example applications
 $(EXAMPLE_APPS):
 	$(Q) mkdir -p $(EXAMPLES_BIN)
-	GOOS=$(GOOS) go build -o $(EXAMPLES_BIN)/$@ ./examples/$@
+	GOOS=$(GOOS) ${GO} build -o $(EXAMPLES_BIN)/$@ ./examples/$@
 	$(Q) sudo setcap cap_net_raw=eip $(EXAMPLES_BIN)/$@
 
 ## Help:

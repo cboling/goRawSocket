@@ -106,7 +106,7 @@ mod-update: ## Update go mod files
 	#${GO} mod vendor
 
 fmt: ## Formats the source code to go best practice style
-	@go fmt ${PACKAGES}
+	@go fmt ${PKG_DIR}
 
 ## Examples:
 .PHONY: example-info
